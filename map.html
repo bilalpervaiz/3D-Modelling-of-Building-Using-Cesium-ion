@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <!-- Include the CesiumJS JavaScript and CSS files -->
+  <link rel="stylesheet" type="text/css" href="./style.css" />
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.129/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.129/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <style>
+    /* Add your custom CSS styles here */
+    @import url(localhost:8080/3d/libs/Cesium-1.129/Apps/Sandcastle/CesiumSandcastle.css);
+    @import url(localhost:8080/3d/libs/Cesium-1.129/Apps/Sandcastle/templates/bucket.css);
+
+    html,
+    body,
+    #cesiumContainer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="cesiumContainer" class="fullSize"></div>
+  <script type="text/javascript">
+    var viewer = new Cesium.Viewer("cesiumContainer", {
+      shouldAnimate: true,
+      animation: false,
+      timeline: false,
+    });
+
+    // Load the Geojson data
+    var precincts = Cesium.GeoJsonDataSource.load("polygons.geojson", {
+      stroke: Cesium.Color.BLACK,
+      strokeWidth: 2,
+    });
+
+    viewer.dataSources.add(precincts);
+
+    // Apply extrusion and textures based on "land_use" values
+    precincts.then(function (dataSource) {
+      var entities = dataSource.entities.values;
+
+      entities.forEach(function (entity) {
+        var landUse = entity.properties["land_use"].getValue();
+        var sideMaterial;
+        var roofMaterial;
+        var extrudedHeight;
+
+        switch (landUse) {
+          case "Residential":
+            sideMaterial = new Cesium.ImageMaterialProperty({
+              image: 'Residential.jpg',
+              transparent: false
+            });
+            roofMaterial = new Cesium.ImageMaterialProperty({
+              image: 'roof resi.jpg',
+              transparent: true
+            });
+            extrudedHeight = 25.0;
+            break;
+          case "Commercial":
+            sideMaterial = new Cesium.ImageMaterialProperty({
+              image: 'commercial.jpg',
+              transparent: false
+            });
+            roofMaterial = new Cesium.ImageMaterialProperty({
+              image: 'roof commercial.jpg',
+              transparent: true
+            });
+            extrudedHeight = 60.0;
+            break;
+          case "Open Spaces and Parks":
+            sideMaterial = Cesium.Color.GREEN.withAlpha(0.7);
+            roofMaterial = Cesium.Color.GREEN.withAlpha(0.7);
+            extrudedHeight = 0.0;
+            break;
+          case "Public Buildings":
+            sideMaterial = Cesium.Color.YELLOW.withAlpha(0.7);
+            roofMaterial = Cesium.Color.YELLOW.withAlpha(0.7);
+            extrudedHeight = 0.0;
+            break;
+          case "Others":
+          default:
+            sideMaterial = Cesium.Color.GRAY.withAlpha(0.7);
+            roofMaterial = Cesium.Color.GRAY.withAlpha(0.7);
+            extrudedHeight = 20.0;
+            break;
+        }
+
+        var hierarchy = entity.polygon.hierarchy.getValue(Cesium.JulianDate.now());
+
+        // Create the walls (sides of the building)
+        viewer.entities.add({
+          wall: {
+            positions: hierarchy.positions,
+            maximumHeights: new Array(hierarchy.positions.length).fill(extrudedHeight),
+            minimumHeights: new Array(hierarchy.positions.length).fill(0),
+            material: sideMaterial,
+          }
+        });
+
+        // Create the roof
+        viewer.entities.add({
+          polygon: {
+            hierarchy: hierarchy,
+            material: roofMaterial,
+            height: extrudedHeight
+          }
+        });
+      });
+    });
+
+    // Set camera view to Islamabad, Pakistan
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(72.96793544818243, 33.65045578210706, 1500), // Longitude, Latitude, Height
+      orientation: {
+        heading: Cesium.Math.toRadians(0),
+        pitch: Cesium.Math.toRadians(-30),
+        roll: 0,
+      },
+    });
+
+    // // Load and display the 3D house model
+    // var housePosition = Cesium.Cartesian3.fromDegrees(73.054467, 33.7103, 10); // Replace with exact coordinates
+    // var houseOrientation = Cesium.Transforms.headingPitchRollQuaternion(
+    //   housePosition,
+    //   new Cesium.HeadingPitchRoll(0, 0, 0)
+    // );
+
+    // var houseEntity = viewer.entities.add({
+    //   name: "House",
+    //   position: housePosition,
+    //   orientation: houseOrientation,
+    //   model: {
+    //     uri: "h.glb", // Path to your 3D house model file
+    //     minimumPixelSize: 128,
+    //     maximumScale: 20000,
+    //   },
+    // });
+
+    // viewer.zoomTo(houseEntity);
+  </script>
+</body>
+
+</html>
